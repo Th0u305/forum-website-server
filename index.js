@@ -52,6 +52,46 @@ async function run() {
       .db(`${process.env.DB_NAME}`)
       .collection(`${process.env.DB_COLLECTION_NAME_5}`);
 
+    // generate JWT
+    app.post("/jwt", async (req, res) => {
+      const email = req.body;
+
+      const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "5h",
+      });
+      res
+      .cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        maxAge: 1000 * 60  * 60 * 24 * 30
+      })
+      .send({ SUCCESS: true });
+    });
+
+
+
+    // using localstorage method
+  
+    //   app.post('/jwt', async (req, res) => {
+    //   const user = req.body;
+    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+    //   res.send({ token });
+    // })
+
+    
+    //logout || clear cookie from browser
+    app.get("/logout", async (req, res) => {
+      res
+        .clearCookie("token", {
+          maxAge: 0,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
+
     // token verify
     const verifyToken = (req, res, next) => {
       const token = req.cookies.token;
@@ -82,33 +122,8 @@ async function run() {
       next();
     };
 
-    // generate JWT
-    app.post("/jwt", async (req, res) => {
-      const email = req.body;
-      const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "5h",
-      });
-
-      res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-          maxAge: 1000 * 60 * 60 * 24 * 30,
-        })
-        .send({ SUCCESS: true });
-    });
-
-    //logout || clear cookie from browser
-    app.get("/logout", async (req, res) => {
-      res
-        .clearCookie("token", {
-          maxAge: 0,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-        })
-        .send({ success: true });
+    app.get("/api/check-auth", verifyToken, (req, res) => {
+      res.status(200).json({ authenticated: true });
     });
 
     // default page
@@ -143,19 +158,6 @@ async function run() {
     // all comments
     app.get("/comments", async (req, res) => {
       const result = await forumComments.find().toArray();
-      res.send(result);
-    });
-
-
-    // add users in db or not 
-    app.post("/addUser", async (req, res) => {
-      const user = req.body;
-      const query = { email: user.email };
-      const existUser = await forumUser.findOne(query);
-      if (existUser) {
-        return res.send({ Message: "User already exists", insertedId: null });
-      }
-      const result = await userCollection.insertOne(user);
       res.send(result);
     });
 
@@ -194,6 +196,33 @@ async function run() {
       res.send(postsWithUsers);
     });
 
+    // add users in db or not
+    app.post("/addUser", async (req, res) => {
+      const user = req.body;
+
+      const query = { email: user.email };
+      const existUser = await forumUser.findOne(query);
+
+      const userCount = await forumUser.estimatedDocumentCount();
+
+      const addUser = {
+        $set: {
+          id: userCount + 1,
+          username: user.name,
+          email: user.email,
+          profileImage: user.photo,
+          badge: [],
+          posts: [],
+          membershipStatus: "Free",
+        },
+      };
+
+      if (existUser) {
+        return res.send({ Message: "User already exists", insertedId: null });
+      }
+      const result = await forumUser.insertOne(addUser);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
