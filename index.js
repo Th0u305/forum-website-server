@@ -16,7 +16,6 @@ app.use(
     optionsSuccessStatus: 200,
   })
 );
-app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 
@@ -52,6 +51,11 @@ async function run() {
       .db(`${process.env.DB_NAME}`)
       .collection(`${process.env.DB_COLLECTION_NAME_5}`);
 
+    // default page
+    app.get("/", (req, res) => {
+      res.send("forum server running");
+    });
+
     // generate JWT
     app.post("/jwt", async (req, res) => {
       const email = req.body;
@@ -60,26 +64,23 @@ async function run() {
         expiresIn: "5h",
       });
       res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-        maxAge: 1000 * 60  * 60 * 24 * 30
-      })
-      .send({ SUCCESS: true });
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+          maxAge: 1000 * 60 * 60 * 24 * 30,
+        })
+        .send({ SUCCESS: true });
     });
 
-
-
     // using localstorage method
-  
+
     //   app.post('/jwt', async (req, res) => {
     //   const user = req.body;
     //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
     //   res.send({ token });
     // })
 
-    
     //logout || clear cookie from browser
     app.get("/logout", async (req, res) => {
       res
@@ -94,7 +95,9 @@ async function run() {
 
     // token verify
     const verifyToken = (req, res, next) => {
-      const token = req.cookies.token;
+      // const token = req.cookies.token;
+      const token =
+        req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
       if (!token) {
         return res.status(401).json({ error: "Unauthorized: Token not found" });
@@ -112,31 +115,15 @@ async function run() {
 
     // use verify admin after verifyToken
     const verifyAdmin = async (req, res, next) => {
-      const email = req.decoded.email;
+      const email = req.user.email      
       const query = { email: email };
-      const user = await userCollection.findOne(query);
-      const isAdmin = user?.role === "admin";
+      const user = await forumUser.findOne(query);
+      const isAdmin = user?.role === "admin" || user.role === "Admin";
       if (!isAdmin) {
         return res.status(403).send({ message: "forbidden access" });
       }
       next();
     };
-
-    app.get("/api/check-auth", verifyToken, (req, res) => {
-      res.status(200).json({ authenticated: true });
-    });
-
-
-    app.post('/getCookie', function (req, res) {
-      const token = req.cookies.token;
-      res.send(req);
-  })
-  
-
-    // default page
-    app.get("/", (req, res) => {
-      res.send("forum server running");
-    });
 
     // All category
     app.get("/category", async (req, res) => {
@@ -213,15 +200,13 @@ async function run() {
       const userCount = await forumUser.estimatedDocumentCount();
 
       const addUser = {
-        $set: {
-          id: userCount + 1,
-          username: user.name,
-          email: user.email,
-          profileImage: user.photo,
-          badge: [],
-          posts: [],
-          membershipStatus: "Free",
-        },
+        id: userCount + 1,
+        username: user.name,
+        email: user.email,
+        profileImage: user.photo,
+        badge: [],
+        posts: [],
+        membershipStatus: "Free",
       };
 
       if (existUser) {
@@ -230,6 +215,65 @@ async function run() {
       const result = await forumUser.insertOne(addUser);
       res.send(result);
     });
+ 
+
+    app.get("/api/check-auth/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const email = req.params.id;
+      const query = { email: email };
+      const user = await forumUser.findOne(query);
+      const isAdmin = user?.role === "admin" || user.role === "Admin";
+      res.send(isAdmin);
+    }); 
+
+    // get data as admin
+    app.get("/adminUser", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await forumUser.find().toArray();
+      res.send(result);
+    });
+
+    app.patch("/adminPriv", verifyToken, verifyAdmin, async (req, res) => {
+      const allData = req.body;
+      const id = req.body.id;
+      const filter = { _id: new ObjectId(id) };
+
+      const filterData = {
+        membershipStatus: allData.membership,
+        role: allData.role,
+      };
+
+      function removeEmptyFields(obj) {
+        return Object.fromEntries(
+          Object.entries(obj).filter(([key, value]) => {
+            // Exclude fields that are undefined, null, empty string, or empty array
+            return (
+              value !== undefined &&
+              value !== null &&
+              value !== "" &&
+              !(Array.isArray(value) && value.length === 0)
+            );
+          })
+        );
+      }
+      const filteredData = removeEmptyFields(filterData);
+
+      const updateUserData = {
+        $set: filteredData
+      };
+
+
+      const result = await forumUser.updateOne(filter, updateUserData);
+      res.send(result)
+    });
+
+    app.delete("/adminPriv/:id", verifyToken, verifyAdmin, async (req, res)=>{
+      const id = req.params.id
+      const query = {_id : new ObjectId(id)}  
+      const result = forumUser.deleteOne(query);
+      res.send(result);
+      
+    })
+ 
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
