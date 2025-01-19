@@ -126,6 +126,13 @@ async function run() {
       res.status(200).json({ authenticated: true });
     });
 
+
+    app.post('/getCookie', function (req, res) {
+      const token = req.cookies.token;
+      res.send(req);
+  })
+  
+
     // default page
     app.get("/", (req, res) => {
       res.send("forum server running");
