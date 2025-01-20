@@ -216,21 +216,36 @@ async function run() {
       res.send(result);
     });
  
+    // get data
+    app.get("/getDataA", verifyToken, async (req, res) => {
+      const users = await forumUser.find().toArray();
+      const posts = await forumPosts.find().toArray();
+      const postTotal = await forumPosts.estimatedDocumentCount();
 
-    app.get("/api/check-auth/:id", verifyToken, verifyAdmin, async (req, res) => {
+      res.send({users,postTotal});
+    });
+       
+    
+   // verify admin 
+    app.get("/api/check-auth/:id", verifyToken, async (req, res) => {
       const email = req.params.id;
       const query = { email: email };
       const user = await forumUser.findOne(query);
-      const isAdmin = user?.role === "admin" || user.role === "Admin";
+      const isAdmin = user?.role === "admin" || user?.role === "Admin";
       res.send(isAdmin);
     }); 
+    
+    // get data as admin 
+    app.get("/getDataAdmin", verifyToken, verifyAdmin, async(req, res)=>{
+      const users = await forumUser.find().toArray();
+      const posts = await forumPosts.find().toArray();
+      const usersTotal = await forumUser.estimatedDocumentCount();
+      const postTotal = await forumPosts.estimatedDocumentCount();
+      const commentTotal = await forumComments.estimatedDocumentCount();
+      res.send({users, usersTotal, postTotal, commentTotal})
+    })
 
-    // get data as admin
-    app.get("/adminUser", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await forumUser.find().toArray();
-      res.send(result);
-    });
-
+    //update user details
     app.patch("/adminPriv", verifyToken, verifyAdmin, async (req, res) => {
       const allData = req.body;
       const id = req.body.id;
@@ -264,14 +279,37 @@ async function run() {
       const result = await forumUser.updateOne(filter, updateUserData);
       res.send(result)
     });
-
+     
+    // delete user from db
     app.delete("/adminPriv/:id", verifyToken, verifyAdmin, async (req, res)=>{
       const id = req.params.id
       const query = {_id : new ObjectId(id)}  
       const result = forumUser.deleteOne(query);
       res.send(result);
-      
     })
+
+    // add Post
+    app.post("/addPosts", verifyToken,async (req, res)=>{
+      const data = req.body;
+      const filterUser = {id: (data.data.authorId)}
+      const updateData = {
+        $push: {posts : data.data.id}
+      }
+      const result1 = await forumPosts.insertOne(data.data);
+      const result2 = await forumUser.updateOne(filterUser,updateData)
+      
+      res.send({result1, result2})
+    })
+
+    app.get("/myPost/:id", verifyToken, async (req, res)=>{
+      const email = req.params.id;
+      const query = { email: email };
+      const user = await forumUser.findOne(query);
+      const matchPosts = await forumPosts.find({id : {$in : user.posts}}).toArray()       
+      res.send(matchPosts)
+    })
+
+
  
 
   } finally {
