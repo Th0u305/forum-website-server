@@ -316,11 +316,12 @@ async function run() {
       const data = req.body;
       const annLength = await forumAnnouncement.estimatedDocumentCount()
       const addAnn = {
-        
+  
         id: annLength + 1,
         adminId : data.data.adminId ,
         title : data.data.title,
-        announcements: data.data.details
+        announcements: data.data.details,
+        image : data.data.image
         
       }
       const result = forumAnnouncement.insertOne(addAnn);
