@@ -52,6 +52,10 @@ async function run() {
       .collection(`${process.env.DB_COLLECTION_NAME_5}`);
     const forumAnnouncement = client.db(`${process.env.DB_NAME}`)
     .collection(`${process.env.DB_COLLECTION_NAME_6}`);
+    const forumReports = client.db(`${process.env.DB_NAME}`)
+    .collection(`${process.env.DB_COLLECTION_NAME_7}`);
+
+
     // default page
     app.get("/", (req, res) => {
       res.send("forum server running");
@@ -328,15 +332,16 @@ async function run() {
       res.send(result)
             
     })
-
+  
+    // get announcements
     app.get("/getAnn", async (req, res)=>{
       const result = await forumAnnouncement.find().toArray()      
       res.send(result); 
     })
 
+    // update likes and dislikes
     app.patch("/updateLikes", verifyToken, async (req, res)=>{
       const data = req.body
-      console.log(data.filter.name);
       
       const query = {id : data.filter.id}
       const filter = await forumPosts.findOne(query)
@@ -359,6 +364,44 @@ async function run() {
         return;
       }
 
+    })
+  
+    // submit report 
+    app.post("/makeReport", verifyToken, async (req, res)=>{
+      data = req.body;
+      const reportCount = await forumReports.estimatedDocumentCount()  
+      const updateData = {
+        reportId: reportCount+1,
+        reportedUserId: data.data.userId,
+        reportPostId: data.data.postId,
+        reportDetails: data.data.reportDetails,
+        reportOption: data.data.reportOption
+      }      
+      const result = forumReports.insertOne(updateData);
+      res.send(result);
+    })
+
+    // merged data with users data
+    app.get("/reportsData", verifyToken, verifyAdmin, async (req,res)=>{
+
+      const reportWithUsers = await forumReports
+      .aggregate([
+        {
+          $lookup: {
+            from: "userData", // The MongoDB collection for users
+            localField: "reportedUserId", // posts authorId
+            foreignField: "id", // in the users collection id field
+            as: "author", // Alias for joined data
+          },
+        },
+        {
+          $unwind: "$author", // Flatten the array to simplify response structure
+        },
+      ])
+      .toArray();
+
+
+      res.send(reportWithUsers);
     })
 
 
