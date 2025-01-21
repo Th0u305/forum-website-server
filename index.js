@@ -50,7 +50,8 @@ async function run() {
     const forumComments = client
       .db(`${process.env.DB_NAME}`)
       .collection(`${process.env.DB_COLLECTION_NAME_5}`);
-
+    const forumAnnouncement = client.db(`${process.env.DB_NAME}`)
+    .collection(`${process.env.DB_COLLECTION_NAME_6}`);
     // default page
     app.get("/", (req, res) => {
       res.send("forum server running");
@@ -224,6 +225,15 @@ async function run() {
 
       res.send({users,postTotal});
     });
+
+    // user posts
+    app.get("/myPost/:id", verifyToken, async (req, res)=>{
+      const email = req.params.id;
+      const query = { email: email };
+      const user = await forumUser.findOne(query);
+      const matchPosts = await forumPosts.find({id : {$in : user.posts}}).toArray()       
+      res.send(matchPosts)
+    })
        
     
    // verify admin 
@@ -301,12 +311,53 @@ async function run() {
       res.send({result1, result2})
     })
 
-    app.get("/myPost/:id", verifyToken, async (req, res)=>{
-      const email = req.params.id;
-      const query = { email: email };
-      const user = await forumUser.findOne(query);
-      const matchPosts = await forumPosts.find({id : {$in : user.posts}}).toArray()       
-      res.send(matchPosts)
+    // post announcements
+    app.post("/announcement", verifyToken, verifyAdmin, async (req, res)=>{
+      const data = req.body;
+      const annLength = await forumAnnouncement.estimatedDocumentCount()
+      const addAnn = {
+        
+        id: annLength + 1,
+        adminId : data.data.adminId ,
+        title : data.data.title,
+        announcements: data.data.details
+        
+      }
+      const result = forumAnnouncement.insertOne(addAnn);
+      res.send(result)
+            
+    })
+
+    app.get("/getAnn", async (req, res)=>{
+      const result = await forumAnnouncement.find().toArray()      
+      res.send(result); 
+    })
+
+    app.patch("/updateLikes", verifyToken, async (req, res)=>{
+      const data = req.body
+      console.log(data.filter.name);
+      
+      const query = {id : data.filter.id}
+      const filter = await forumPosts.findOne(query)
+      if (data.filter.name === "upVotes") {
+        const updateData = {$set : {
+          upVotes : filter.upVotes+1
+        }}
+              
+        const result = await forumPosts.updateOne(query,updateData)    
+        res.send(result)  
+        return;
+      }
+      if (data.filter.name === "downVotes") {
+        const updateData = {$set : {
+          downVotes : filter.downVotes-1
+        }}
+              
+        const result = await forumPosts.updateOne(query,updateData)    
+        res.send(result)  
+        return;
+      }
+
     })
 
 
