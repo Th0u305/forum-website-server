@@ -6,6 +6,9 @@ const cookieParser = require("cookie-parser");
 const app = express();
 const port = process.env.port || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.SECRET_KEY);
+const { v4: uuidv4, validate: validateUUID } = require('uuid');
+
 
 // middleware
 
@@ -15,7 +18,7 @@ app.use(
     credentials: true,
     optionsSuccessStatus: 200,
   })
-);
+); 
 app.use(express.json());
 app.use(cookieParser());
 
@@ -38,22 +41,35 @@ async function run() {
     const forumCategory = client
       .db(`${process.env.DB_NAME}`)
       .collection(`${process.env.DB_COLLECTION_NAME_1}`);
+
     const forumTags = client
       .db(`${process.env.DB_NAME}`)
       .collection(`${process.env.DB_COLLECTION_NAME_2}`);
+
     const forumPosts = client
       .db(`${process.env.DB_NAME}`)
       .collection(`${process.env.DB_COLLECTION_NAME_3}`);
+
     const forumUser = client
       .db(`${process.env.DB_NAME}`)
       .collection(`${process.env.DB_COLLECTION_NAME_4}`);
+
     const forumComments = client
       .db(`${process.env.DB_NAME}`)
       .collection(`${process.env.DB_COLLECTION_NAME_5}`);
-    const forumAnnouncement = client.db(`${process.env.DB_NAME}`)
-    .collection(`${process.env.DB_COLLECTION_NAME_6}`);
-    const forumReports = client.db(`${process.env.DB_NAME}`)
-    .collection(`${process.env.DB_COLLECTION_NAME_7}`);
+
+    const forumAnnouncement = client
+      .db(`${process.env.DB_NAME}`)
+      .collection(`${process.env.DB_COLLECTION_NAME_6}`);
+
+    const forumReports = client
+      .db(`${process.env.DB_NAME}`)
+      .collection(`${process.env.DB_COLLECTION_NAME_7}`);
+
+    const forumPayments = client
+      .db(`${process.env.DB_NAME}`)
+      .collection(`${process.env.DB_COLLECTION_NAME_8}`);
+
 
 
     // default page
@@ -335,7 +351,7 @@ async function run() {
   
     // get announcements
     app.get("/getAnn", async (req, res)=>{
-      const result = await forumAnnouncement.find().toArray()      
+      const result = await forumAnnouncement.find().toArray()            
       res.send(result); 
     })
 
@@ -404,7 +420,56 @@ async function run() {
       res.send(reportWithUsers);
     })
 
+    // get random payment uuid
+    app.get("/getRandUUid", verifyToken, async(req, res)=>{
+      const result = uuidv4()
+      res.send(result)
 
+    })
+ 
+    // validate payment uuid
+    app.post('/paymentsUuidRand/:id', async (req, res) => {
+      const paymentId = req.params.id;
+    
+      // Validate if the UUID is in the correct format
+      if (!validateUUID(paymentId)) {
+        return res.send(false);
+      }  
+      // Respond with payment data
+      res.status(200).json(true);
+    });
+     
+    // payment intent
+    app.post('/create-payment-intent',verifyToken, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    });
+
+    // post payment data on db
+    app.post("/paymentsData", verifyToken, async (req,res)=>{
+      const data = req.body;
+      const result = await forumPayments.insertOne(data)
+      res.send(result);
+    })
+
+    // get all payment history
+    app.get("/paymentHistories", verifyToken, verifyAdmin , async (req, res)=>{
+      const result = await forumPayments.find().toArray()
+      res.send(result);
+    })
+
+    
+
+    
  
 
   } finally {
