@@ -563,7 +563,7 @@ async function run() {
       }
       if (data.filter.name === "downVotes") {
         const updateData = {$set : {
-          downVotes : filter.downVotes-1
+          downVotes : filter.downVotes+1
         }}
               
         const result = await forumPosts.updateOne(query,updateData)    
