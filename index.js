@@ -182,6 +182,7 @@ async function run() {
       const filter = req.query.filter;
       const category = req.query.category;
       const page = parseInt(req.query.page);
+      const latest = req.query.latest;
       const limit = 5;
       
       if (page) {
@@ -230,7 +231,6 @@ async function run() {
         res.send(postsWithUsers1);
       }
 
-     
 
       if (filter) {
         
@@ -283,7 +283,44 @@ async function run() {
       }
 
 
-      if (!filter &&  ! page) {
+      if (latest) {
+
+        const postsWithUsers4 = await forumPosts
+        .aggregate([
+      {
+        $lookup: {
+          from: "userData", // The MongoDB collection for users
+          localField: "authorId", // posts authorId
+          foreignField: "id", // in the users collection id field
+          as: "author", // Alias for joined data
+        },
+      },
+      {
+        $unwind: "$author", // Flatten the array to simplify response structure
+      },
+
+      {
+        $lookup: {
+          from: "comments", // The MongoDB collection for comments
+          localField: "id", // posts id
+          foreignField: "postId", // in comments collection postId field
+          as: "commentData", // Alias for joined Data
+        },
+      },
+
+      // unwind choose only one obj in array
+
+      // {
+      //   $unwind: "$commentData", // Flatten the array to simplify response structure
+      // },
+        ]).toArray();
+    
+      res.send(postsWithUsers4);
+        
+      }
+
+
+      if (!filter &&  ! page && !latest) {
       
         const postsWithUsers3 = await forumPosts
         .aggregate([
@@ -322,7 +359,7 @@ async function run() {
 
     });
 
-
+    // sort by 
     app.post('/posts/popularity', async (req, res) => {
 
       const filter = req.query.filter;
@@ -619,7 +656,7 @@ async function run() {
     })
  
     // validate payment uuid
-    app.post('/paymentsUuidRand/:id', async (req, res) => {
+    app.post('/paymentsUuidRand/:id', verifyToken, async (req, res) => {
       const paymentId = req.params.id;
     
       // Validate if the UUID is in the correct format
@@ -653,7 +690,7 @@ async function run() {
     })
 
     // get all payment history
-    app.get("/paymentHistories", verifyToken, verifyAdmin , async (req, res)=>{
+    app.get("/paymentHistories", verifyToken , async (req, res)=>{
       const result = await forumPayments.find().toArray()
       res.send(result);
     })
