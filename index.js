@@ -695,6 +695,20 @@ async function run() {
       res.send(result);
     })
 
+     // add comments on posts
+    app.post("/addComments", verifyToken, async (req,res)=>{
+      const data = await req.body; 
+
+      const filterComment = {id: (data.data.postId)}      
+      const updateComments = {
+        $push: {comments : data.data.id}
+      }      
+      const addCommentsId = await forumPosts.updateOne(filterComment,updateComments)       
+      const result = await forumComments.insertOne(data.data)
+      res.send({addCommentsId, result});
+      
+    })
+
     
 
     
