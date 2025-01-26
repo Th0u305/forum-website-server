@@ -176,109 +176,90 @@ async function run() {
       res.send(result);
     });
 
-    // merge all data
+    // merge all data and filter 
     app.get("/mergedAllData", async (req, res) => {
 
-      const filter = req.query.filter;
-      const category = req.query.category;
+      const filter = req.query.filter; // search input 
+      const category = req.query.category; // tags or category
       const page = parseInt(req.query.page);
       const latest = req.query.latest;
+      const loadComment = parseInt(req.query.loadComment)
+      const allData = req.query.allData;
       const limit = 5;
-      
+
+      // Calculate the number of documents to skip
+      const skip = (page - 1) * limit;
+
+      // Initialize query
+      const query = {};
+
+
+
+      // data config starts 
+      const matchWithUserData  = {
+        $lookup: {
+          from: "userData", // The MongoDB collection for users
+          localField: "authorId", // posts authorId
+          foreignField: "id", // in the users collection id field
+          as: "author", // Alias for joined data
+        },
+      }
+      const unwind = {
+        $unwind: "$author", // Flatten the array to simplify response structure
+      }
+      const mergeComment = {
+        $lookup: {
+          from: "comments", // The MongoDB collection for comments
+          let :{postId : "$id"},
+          pipeline :[
+            {$match : {$expr : {$eq :["$postId", "$$postId"]}}},
+            {$limit : 3+loadComment || 3}, 
+          ],
+          as: "commentData", // Alias for joined Data
+        },
+      }
+
+
+
+
       if (page) {
-        // Calculate the number of documents to skip
-        const skip = (page - 1) * limit;
-
-        // Initialize query
-        const query = {};
-
- 
+    
         const postsWithUsers1 = await forumPosts
         .aggregate([
-        {
-          $lookup: {
-            from: "userData", // The MongoDB collection for users
-            localField: "authorId", // posts authorId
-            foreignField: "id", // in the users collection id field
-            as: "author", // Alias for joined data
+          matchWithUserData,
+          unwind,
+          mergeComment,
+          {
+            $match: query, // Apply your filter conditions here (dynamic query)
           },
-        },
-        {
-          $unwind: "$author", // Flatten the array to simplify response structure
-        },
-
-        {
-          $lookup: {
-            from: "comments", // The MongoDB collection for comments
-            localField: "id", // posts id
-            foreignField: "postId", // in comments collection postId field
-            as: "commentData", // Alias for joined Data
+          {
+            $skip: skip, // Skip the documents based on pagination
           },
-        },
-        {
-          $match: query, // Apply your filter conditions here (dynamic query)
-        },
-        {
-          $skip: skip, // Skip the documents based on pagination
-        },
-        {
-          $limit: limit, // Limit the number of documents per page
-        }
-
+          {
+            $limit: limit, // Limit the number of documents per page
+          }
         ]).toArray()
-      
-      
         res.send(postsWithUsers1);
       }
 
 
-      if (filter) {
+      if (filter || category) {
         
         const regex = new RegExp(filter, "i"); // Case-insensitive search
-
-
-        // const query = filter ? { tags: { $regex: regex } } : {}; // search by title
-        // const filteredData = filter ? { category: filter } : {};
-    
-        // if (filter) query = filteredData;
-        // const result = await forumPosts.find(query).toArray();
+        const regex2 = new RegExp(filter, "i"); // Case-insensitive search
          
         const postsWithUsers2 = await forumPosts
         .aggregate([
-        {
-          $lookup: {
-            from: "userData", // The MongoDB collection for users
-            localField: "authorId", // posts authorId
-            foreignField: "id", // in the users collection id field
-            as: "author", // Alias for joined data
-          },
-        },
-        {
-          $unwind: "$author", // Flatten the array to simplify response structure
-        },
-
-        {
-          $lookup: {
-            from: "comments", // The MongoDB collection for comments
-            localField: "id", // posts id
-            foreignField: "postId", // in comments collection postId field
-            as: "commentData", // Alias for joined Data
-          },
-        },
-        {
-          $match :{
-            tags : {$regex : regex}, // search for keyword in tags field
-            category : {$regex : regex}
-          }
-        } 
-
-        // unwind choose only one obj in array
-
-        // {
-        //   $unwind: "$commentData", // Flatten the array to simplify response structure
-        // },
-        ])
-        .toArray();
+          matchWithUserData,
+          unwind,
+          mergeComment,
+          {
+            $match :{
+              tags : {$regex : regex}, // search for keyword in tags field
+              category : {$regex : regex2}
+            }
+          } 
+        ]).toArray();
         res.send(postsWithUsers2);
       }
 
@@ -287,76 +268,36 @@ async function run() {
 
         const postsWithUsers4 = await forumPosts
         .aggregate([
-      {
-        $lookup: {
-          from: "userData", // The MongoDB collection for users
-          localField: "authorId", // posts authorId
-          foreignField: "id", // in the users collection id field
-          as: "author", // Alias for joined data
-        },
-      },
-      {
-        $unwind: "$author", // Flatten the array to simplify response structure
-      },
-
-      {
-        $lookup: {
-          from: "comments", // The MongoDB collection for comments
-          localField: "id", // posts id
-          foreignField: "postId", // in comments collection postId field
-          as: "commentData", // Alias for joined Data
-        },
-      },
-
-      // unwind choose only one obj in array
-
-      // {
-      //   $unwind: "$commentData", // Flatten the array to simplify response structure
-      // },
+          matchWithUserData,
+          unwind,
+          mergeComment,
         ]).toArray();
-    
-      res.send(postsWithUsers4);
+        res.send(postsWithUsers4);
         
       }
 
-
-      if (!filter &&  ! page && !latest) {
       
+      if (!filter &&  ! page && !latest && !allData) {
+
         const postsWithUsers3 = await forumPosts
         .aggregate([
-      {
-        $lookup: {
-          from: "userData", // The MongoDB collection for users
-          localField: "authorId", // posts authorId
-          foreignField: "id", // in the users collection id field
-          as: "author", // Alias for joined data
-        },
-      },
-      {
-        $unwind: "$author", // Flatten the array to simplify response structure
-      },
-
-      {
-        $lookup: {
-          from: "comments", // The MongoDB collection for comments
-          localField: "id", // posts id
-          foreignField: "postId", // in comments collection postId field
-          as: "commentData", // Alias for joined Data
-        },
-      },
-
-      // unwind choose only one obj in array
-
-      // {
-      //   $unwind: "$commentData", // Flatten the array to simplify response structure
-      // },
-        ])
-        .limit(5).toArray();
-    
-      res.send(postsWithUsers3);
- 
+          matchWithUserData,
+          unwind,
+          mergeComment,
+        ]).limit(5).toArray();
+        res.send(postsWithUsers3);
       }
 
+      if (allData) {
+        const postsWithUsers4 = await forumPosts
+        .aggregate([
+          matchWithUserData,
+          unwind,
+          mergeComment,
+        ]).toArray();
+        res.send(postsWithUsers4);
+      }
+ 
     });
 
     // sort by 
