@@ -70,6 +70,10 @@ async function run() {
       .db(`${process.env.DB_NAME}`)
       .collection(`${process.env.DB_COLLECTION_NAME_8}`);
 
+    const forumCommentsReport = client
+      .db(`${process.env.DB_NAME}`)
+      .collection(`${process.env.DB_COLLECTION_NAME_9}`);
+
 
 
     // default page
@@ -277,7 +281,7 @@ async function run() {
       }
 
       
-      if (!filter &&  ! page && !latest && !allData) {
+      if (!filter &&  ! page && !latest && !allData && !loadComment) {
 
         const postsWithUsers3 = await forumPosts
         .aggregate([
@@ -288,7 +292,8 @@ async function run() {
         res.send(postsWithUsers3);
       }
 
-      if (allData) {
+
+      if (allData || loadComment) {
         const postsWithUsers4 = await forumPosts
         .aggregate([
           matchWithUserData,
@@ -551,7 +556,7 @@ async function run() {
 
     })
   
-    // submit report 
+    // submit post report 
     app.post("/makeReport", verifyToken, async (req, res)=>{
       data = req.body;
       const reportCount = await forumReports.estimatedDocumentCount()  
@@ -564,6 +569,23 @@ async function run() {
       }      
       const result = forumReports.insertOne(updateData);
       res.send(result);
+    })
+
+    app.post("/commentReport", verifyToken, async (res, req)=>{
+      const data = req.body;
+      const commentRepo = await forumCommentsReport.estimatedDocumentCount()
+      // const updateData = {
+      //   commentReportId: commentRepo+1,
+      //   reportedUserId: data.data.userId,
+      //   commentReportPostId: data.data.postId,
+      //   reportDetails: data.data.reportDetails,
+      //   reportOption: data.data.reportOption
+      // } 
+console.log(data);
+
+      // const result = forumCommentsReport.insertOne(updateData);
+      // res.send(result);
+
     })
 
     // merged data with users data
