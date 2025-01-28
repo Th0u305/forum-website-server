@@ -586,6 +586,27 @@ async function run() {
       res.send(result);
     })
 
+    // get report comment
+    app.get("/commentReport", verifyToken, verifyAdmin, async (req, res)=>{
+      // const result = forumCommentsReport.find().toArray()
+      const result = await forumCommentsReport
+      .aggregate([
+        {
+          $lookup: {
+            from: "userData", // The MongoDB collection for users
+            localField: "reportUserId", // comment authorId
+            foreignField: "id", // in the users collection id field
+            as: "author", // Alias for joined data
+          },
+        },
+        {
+          $unwind: "$author", // Flatten the array to simplify response structure
+        },
+      ])
+      .toArray();
+      res.send(result);
+    })
+
     // delete comments
     app.delete("/deleteComment/:id", verifyToken, async (req,res)=>{
       const id = req.params.id;  
