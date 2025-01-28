@@ -582,19 +582,8 @@ async function run() {
     // report comment
     app.post("/commentReport", verifyToken, async (req, res)=>{
       const data = req.body;
-      const commentRepo = await forumCommentsReport.estimatedDocumentCount()
-      // const updateData = {
-      //   commentReportId: commentRepo+1,
-      //   reportedUserId: data.data.userId,
-      //   commentReportPostId: data.data.postId,
-      //   reportDetails: data.data.reportDetails,
-      //   reportOption: data.data.reportOption
-      // } 
-console.log(data);
-
-      // const result = forumCommentsReport.insertOne(updateData);
-      // res.send(result);
-
+      const result = forumCommentsReport.insertOne(data.data);
+      res.send(result);
     })
 
     // delete comments
