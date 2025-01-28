@@ -187,7 +187,7 @@ async function run() {
       const category = req.query.category; // tags or category
       const page = parseInt(req.query.page);
       const latest = req.query.latest;
-      const loadComment = parseInt(req.query.loadComment)
+      const loadComment = parseInt(req.query.loadComment)      
       const allData = req.query.allData;
       const limit = 5;
 
@@ -217,12 +217,20 @@ async function run() {
           let :{postId : "$id"},
           pipeline :[
             {$match : {$expr : {$eq :["$postId", "$$postId"]}}},
-            {$limit : 3+loadComment || 3}, 
+            {$limit : 3+loadComment || 2}, 
           ],
           as: "commentData", // Alias for joined Data
         },
       }
 
+
+      // {
+      //   $lookup: {
+      //     from: "comments", // The MongoDB collection for comments
+      //     localField: "id", // posts id
+      //     foreignField: "postId", // in comments collection postId field
+      //     as: "commentData", // Alias for joined Data
+      //   },
 
 
 
@@ -399,7 +407,7 @@ async function run() {
         username: user.name,
         email: user.email,
         profileImage: user.photo,
-        badge: [],
+        badge: ["Bronze"],
         posts: [],
         membershipStatus: "Free",
       };
@@ -571,7 +579,8 @@ async function run() {
       res.send(result);
     })
 
-    app.post("/commentReport", verifyToken, async (res, req)=>{
+    // report comment
+    app.post("/commentReport", verifyToken, async (req, res)=>{
       const data = req.body;
       const commentRepo = await forumCommentsReport.estimatedDocumentCount()
       // const updateData = {
@@ -586,6 +595,22 @@ console.log(data);
       // const result = forumCommentsReport.insertOne(updateData);
       // res.send(result);
 
+    })
+
+    // delete comments
+    app.delete("/deleteComment/:id", verifyToken, async (req,res)=>{
+      const id = req.params.id;  
+      const data = req.body
+      const queryPostId = {_id : new ObjectId(data.post_id)}
+      const queryCommentId = {_id: new ObjectId(id)}      
+    
+      const unset = { [`comments.${data.commentIndex}`]: 1 }
+
+      const unsetResult = forumPosts.updateOne(queryPostId, {$unset : unset})
+      const pullResult = forumPosts.updateOne(queryPostId, {$pull : {comments : null}})
+      const result = await forumComments.deleteOne(queryCommentId)
+      res.send({pullResult,result})  
+       
     })
 
     // merged data with users data
