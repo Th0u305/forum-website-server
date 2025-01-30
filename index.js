@@ -14,7 +14,7 @@ const { v4: uuidv4, validate: validateUUID } = require('uuid');
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://forum-website-pi.vercel.app"],
+    origin: ["http://localhost:5173", `${process.env.URL__00}`],
     credentials: true,
     optionsSuccessStatus: 200,
   })
@@ -82,7 +82,7 @@ async function run() {
     });
 
     // generate JWT
-    app.post("/jwt", async (req, res) => {
+    app.post(`/${process.env.URL__1}`, async (req, res) => {
       const email = req.body;
 
       const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
@@ -107,7 +107,7 @@ async function run() {
     // })
 
     //logout || clear cookie from browser
-    app.get("/logout", async (req, res) => {
+    app.get(`/${process.env.URL__2}`, async (req, res) => {
       res
         .clearCookie("token", {
           maxAge: 0,
@@ -151,37 +151,37 @@ async function run() {
     };
 
     // All category
-    app.get("/category", async (req, res) => {
+    app.get(`/${process.env.URL__3}`, async (req, res) => {
       const result = await forumCategory.find().toArray();
       res.send(result);
     });
 
     // all tags
-    app.get("/tags", async (req, res) => {
+    app.get(`/${process.env.URL__4}`, async (req, res) => {
       const result = await forumTags.find().toArray();
       res.send(result);
     });
 
     // all posts
-    app.get("/posts", async (req, res) => {
+    app.get(`/${process.env.URL__5}`, async (req, res) => {
       const result = await forumPosts.find().toArray();
       res.send(result);
     });
 
     // all users
-    app.get("/users", async (req, res) => {
+    app.get(`/${process.env.URL__6}`, async (req, res) => {
       const result = await forumUser.find().toArray();
       res.send(result);
     });
 
     // all comments
-    app.get("/comments", async (req, res) => {
+    app.get(`/${process.env.URL__7}`, async (req, res) => {
       const result = await forumComments.find().toArray();
       res.send(result);
     });
 
     // merge all data and filter 
-    app.get("/mergedAllData", async (req, res) => {
+    app.get(`/${process.env.URL__8}`, async (req, res) => {
 
       const filter = req.query.filter; // search input 
       const category = req.query.category; // tags or category
@@ -314,7 +314,7 @@ async function run() {
     });
 
     // sort by 
-    app.post('/posts/popularity', async (req, res) => {
+    app.post(`/${process.env.URL__9}`, async (req, res) => {
 
       const filter = req.query.filter;
       
@@ -394,7 +394,7 @@ async function run() {
     });
 
     // add users in db or not
-    app.post("/addUser", async (req, res) => {
+    app.post(`/${process.env.URL__10}`, async (req, res) => {
       const user = req.body;
 
       const query = { email: user.email };
@@ -420,7 +420,7 @@ async function run() {
     });
  
     // get data
-    app.get("/getDataA", verifyToken, async (req, res) => {
+    app.get(`/${process.env.URL__11}`, verifyToken, async (req, res) => {
       const users = await forumUser.find().toArray();
       const posts = await forumPosts.find().toArray();
       const postTotal = await forumPosts.estimatedDocumentCount();
@@ -429,7 +429,7 @@ async function run() {
     });
 
     // user posts
-    app.get("/myPost/:id", verifyToken, async (req, res)=>{
+    app.get(`/${process.env.URL__12}`, verifyToken, async (req, res)=>{
       const email = req.params.id;
       const query = { email: email };
       const user = await forumUser.findOne(query);
@@ -439,7 +439,7 @@ async function run() {
        
     
    // verify admin 
-    app.get("/api/check-auth/:id", verifyToken, async (req, res) => {
+    app.get(`/${process.env.URL__13}`, verifyToken, async (req, res) => {
       const email = req.params.id;
       const query = { email: email };
       const user = await forumUser.findOne(query);
@@ -448,7 +448,7 @@ async function run() {
     }); 
     
     // get data as admin 
-    app.get("/getDataAdmin", verifyToken, verifyAdmin, async(req, res)=>{
+    app.get(`/${process.env.URL__14}`, verifyToken, verifyAdmin, async(req, res)=>{
       const users = await forumUser.find().toArray();
       const posts = await forumPosts.find().toArray();
       const usersTotal = await forumUser.estimatedDocumentCount();
@@ -458,7 +458,7 @@ async function run() {
     })
 
     //update user details
-    app.patch("/adminPriv", verifyToken, verifyAdmin, async (req, res) => {
+    app.patch(`/${process.env.URL__15}`, verifyToken, verifyAdmin, async (req, res) => {
       const allData = req.body;
       const id = req.body.id;
       const filter = { _id: new ObjectId(id) };
@@ -493,7 +493,7 @@ async function run() {
     });
      
     // delete user from db
-    app.delete("/adminPriv/:id", verifyToken, verifyAdmin, async (req, res)=>{
+    app.delete(`/${process.env.URL__16}`, verifyToken, verifyAdmin, async (req, res)=>{
       const id = req.params.id
       const query = {_id : new ObjectId(id)}  
       const result = forumUser.deleteOne(query);
@@ -501,7 +501,7 @@ async function run() {
     })
 
     // add Post
-    app.post("/addPosts", verifyToken,async (req, res)=>{
+    app.post(`/${process.env.URL__17}`, verifyToken,async (req, res)=>{
       const data = req.body;
       const filterUser = {id: (data.data.authorId)}
       const updateData = {
@@ -514,7 +514,7 @@ async function run() {
     })
 
     // post announcements
-    app.post("/announcement", verifyToken, verifyAdmin, async (req, res)=>{
+    app.post(`/${process.env.URL__18}`, verifyToken, verifyAdmin, async (req, res)=>{
       const data = req.body;
       const annLength = await forumAnnouncement.estimatedDocumentCount()
       const addAnn = {
@@ -532,13 +532,13 @@ async function run() {
     })
   
     // get announcements
-    app.get("/getAnn", async (req, res)=>{
+    app.get(`/${process.env.URL__19}`, async (req, res)=>{
       const result = await forumAnnouncement.find().toArray()            
       res.send(result); 
     })
 
     // update likes and dislikes
-    app.patch("/updateLikes", verifyToken, async (req, res)=>{
+    app.patch(`/${process.env.URL__20}`, verifyToken, async (req, res)=>{
       const data = req.body
       
       const query = {id : data.filter.id}
@@ -565,7 +565,7 @@ async function run() {
     })
   
     // submit post report 
-    app.post("/makeReport", verifyToken, async (req, res)=>{
+    app.post(`/${process.env.URL__21}`, verifyToken, async (req, res)=>{
       data = req.body;
       const reportCount = await forumReports.estimatedDocumentCount()  
       const updateData = {
@@ -580,14 +580,14 @@ async function run() {
     })
 
     // report comment
-    app.post("/commentReport", verifyToken, async (req, res)=>{
+    app.post(`/${process.env.URL__22}`, verifyToken, async (req, res)=>{
       const data = req.body;
       const result = forumCommentsReport.insertOne(data.data);
       res.send(result);
     })
 
     // get report comment
-    app.get("/commentReport", verifyToken, verifyAdmin, async (req, res)=>{
+    app.get(`/${process.env.URL__22}`, verifyToken, verifyAdmin, async (req, res)=>{
       // const result = forumCommentsReport.find().toArray()
       const result = await forumCommentsReport
       .aggregate([
@@ -608,7 +608,7 @@ async function run() {
     })
 
     // delete comments
-    app.delete("/deleteComment/:id", verifyToken, async (req,res)=>{
+    app.delete(`/${process.env.URL__23}`, verifyToken, async (req,res)=>{
       const id = req.params.id;  
       const data = req.body
       const queryPostId = {_id : new ObjectId(data.post_id)}
@@ -624,7 +624,7 @@ async function run() {
     })
 
     // merged data with users data
-    app.get("/reportsData", verifyToken, verifyAdmin, async (req,res)=>{
+    app.get(`/${process.env.URL__24}`, verifyToken, verifyAdmin, async (req,res)=>{
 
       const reportWithUsers = await forumReports
       .aggregate([
@@ -647,14 +647,14 @@ async function run() {
     })
 
     // get random payment uuid
-    app.get("/getRandUUid", verifyToken, async(req, res)=>{
+    app.get(`/${process.env.URL__25}`, verifyToken, async(req, res)=>{
       const result = uuidv4()
       res.send(result)
 
     })
  
     // validate payment uuid
-    app.post('/paymentsUuidRand/:id', verifyToken, async (req, res) => {
+    app.post(`/${process.env.URL__26}`, verifyToken, async (req, res) => {
       const paymentId = req.params.id;
     
       // Validate if the UUID is in the correct format
@@ -666,7 +666,7 @@ async function run() {
     });
      
     // payment intent
-    app.post('/create-payment-intent',verifyToken, async (req, res) => {
+    app.post(`/${process.env.URL__27}`,verifyToken, async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100);
       const paymentIntent = await stripe.paymentIntents.create({
@@ -681,20 +681,27 @@ async function run() {
     });
 
     // post payment data on db
-    app.post("/paymentsData", verifyToken, async (req,res)=>{
+    app.post(`/${process.env.URL__28}/:id`, verifyToken, async (req,res)=>{
       const data = req.body;
+      const id = req.params.id
+      const userID = {_id : new ObjectId (id)}  
+      const updateMember = {$set:{ 
+        badge : [data.purchasedMembership],
+        membershipStatus : "Member"
+      }}
+      const result2 = forumUser.updateOne(userID,updateMember)
       const result = await forumPayments.insertOne(data)
-      res.send(result);
-    })
-
+      res.send({result,result2});  
+    }) 
+ 
     // get all payment history
-    app.get("/paymentHistories", verifyToken , async (req, res)=>{
+    app.get(`/${process.env.URL__29}`, verifyToken , async (req, res)=>{
       const result = await forumPayments.find().toArray()
       res.send(result);
     })
 
      // add comments on posts
-    app.post("/addComments", verifyToken, async (req,res)=>{
+    app.post(`/${process.env.URL__30}`, verifyToken, async (req,res)=>{
       const data = await req.body; 
 
       const filterComment = {id: (data.data.postId)}      
